@@ -32,7 +32,7 @@ public class MainDashboard extends JFrame
         setContentPane(MainDashboard);
         setTitle("MainDashboard");
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setSize(300, 600);
+        setSize(500, 600);
         setLocationRelativeTo(null);
 
         // Setup timer display inside MainTimer_MD panel
@@ -107,22 +107,22 @@ public class MainDashboard extends JFrame
             {
                 if (timer != null)
                 {
-                    timer.stop();  // stop the timer if it's running
+                    timer.stop();
                 }
                 // reset counters
                 elapsedTime = 0;
                 seconds = 0;
                 minutes = 0;
                 hours = 0;
-                // update label
                 timeLabel.setText("00:00:00");
             }
         });
 
-
         // Navigation buttons
         GoToTaskManager_MD.addActionListener(e ->
-                JOptionPane.showMessageDialog(null, "Accessing Task Manager"));
+        {
+            new TaskManagerDashboard();   // open the Task Manager window
+        });
 
         GoToProdLog_MD.addActionListener(e ->
                 JOptionPane.showMessageDialog(null, "Accessing Productivity Log"));
@@ -132,7 +132,6 @@ public class MainDashboard extends JFrame
 
     public static void main(String[] args)
     {
-        // Entry point
         new MainDashboard();
     }
 }
