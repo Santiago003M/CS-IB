@@ -21,6 +21,7 @@ public class MainDashboard extends JFrame
 
     // Timer fields
     private JLabel timeLabel;
+    private JButton Settings;
     private Timer timer;
     private int elapsedTime = 0;
     private int seconds = 0, minutes = 0, hours = 0;
@@ -121,13 +122,22 @@ public class MainDashboard extends JFrame
         // Navigation buttons
         GoToTaskManager_MD.addActionListener(e ->
         {
-            new TaskManagerDashboard();   // open the Task Manager window
+            new TaskManagerDashboard();
+            dispose();
         });
 
         GoToProdLog_MD.addActionListener(e ->
                 JOptionPane.showMessageDialog(null, "Accessing Productivity Log"));
 
         setVisible(true);
+        Settings.addActionListener(new ActionListener()
+        {
+            @Override
+            public void actionPerformed(ActionEvent e)
+            {
+
+            }
+        });
     }
 
     public static void main(String[] args)

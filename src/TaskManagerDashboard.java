@@ -1,4 +1,6 @@
 import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
 public class TaskManagerDashboard extends JFrame
 {
@@ -9,6 +11,7 @@ public class TaskManagerDashboard extends JFrame
     private JButton LinkTaskToTimer_TMD;
     private JTable TaskTable_TMD;
     private JLabel StatusKey_TMD;
+    private JButton ExitTaskManager_TMD;
 
     public TaskManagerDashboard()
     {
@@ -22,5 +25,11 @@ public class TaskManagerDashboard extends JFrame
         AddTask_TMD.addActionListener(e -> new AddTaskSubDashboard().setVisible(true));
 
         setVisible(true);
+
+        ExitTaskManager_TMD.addActionListener(e ->
+        {
+            new MainDashboard();  // open main dashboard
+            dispose();            // close task manager window
+        });
     }
 }
