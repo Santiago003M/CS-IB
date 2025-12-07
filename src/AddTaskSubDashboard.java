@@ -1,3 +1,4 @@
+import com.toedter.calendar.JCalendar;
 import javax.swing.*;
 import java.awt.*;
 
@@ -9,6 +10,8 @@ public class AddTaskSubDashboard extends JFrame
     private JLabel AddTaskSubDashboard_ATSD;
     private JPanel AddTaskSDPanel_ATSD;
     private JLabel TaskFields_ATSD;
+    private JPanel CalendarPanel_ATSD;
+    private JCalendar calendarPicker;
 
     public AddTaskSubDashboard()
     {
@@ -17,5 +20,15 @@ public class AddTaskSubDashboard extends JFrame
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setSize(600, 600);
         setLocationRelativeTo(null);
+
+        // ===== CREATE CALENDAR AND SET SIZE =====
+        calendarPicker = new JCalendar();
+        calendarPicker.setPreferredSize(new Dimension(100, 130));  // <<-- adjust size here
+
+        // ===== ADD TO PANEL =====
+        CalendarPanel_ATSD.setLayout(new BorderLayout());
+        CalendarPanel_ATSD.add(calendarPicker, BorderLayout.CENTER);
+
+        setVisible(true);
     }
 }

@@ -127,9 +127,15 @@ public class MainDashboard extends JFrame
         });
 
         GoToProdLog_MD.addActionListener(e ->
-                JOptionPane.showMessageDialog(null, "Accessing Productivity Log"));
+        {
+            ProductivityLogDashboard pl = new ProductivityLogDashboard();
+            pl.setVisible(true);
+            dispose();
+        });
 
         setVisible(true);
+
+        // Settings button
         Settings.addActionListener(new ActionListener()
         {
             @Override
