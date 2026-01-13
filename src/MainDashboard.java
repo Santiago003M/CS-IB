@@ -136,13 +136,10 @@ public class MainDashboard extends JFrame
         setVisible(true);
 
         // Settings button
-        Settings.addActionListener(new ActionListener()
+        Settings.addActionListener(e ->
         {
-            @Override
-            public void actionPerformed(ActionEvent e)
-            {
-
-            }
+            Settings pl = new Settings();
+            dispose();
         });
     }
 
