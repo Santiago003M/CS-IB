@@ -1,6 +1,9 @@
+package Main;
+
 import javax.swing.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.List;
 
 public class TaskManagerDashboard extends JFrame
 {
@@ -18,36 +21,32 @@ public class TaskManagerDashboard extends JFrame
         TaskDAO dao = new TaskDAO();
         java.util.List<Task> tasks = dao.getAllTasksWithTime();
 
-        // Column names for your JTable
-        String[] columns = {"Name", "Subject", "Deadline", "Status", "Time Spent"};
-
-        // Convert List<Task> → Object[][]
-        Object[][] data = new Object[tasks.size()][5];
+        String[] columns = {"ID", "Name", "Subject", "Deadline", "Status", "Time Spent"};
+        Object[][] data = new Object[tasks.size()][6];
 
         for (int i = 0; i < tasks.size(); i++)
         {
             Task t = tasks.get(i);
-
-            // Convert seconds → hours + minutes
             long totalSec = t.getTotalSeconds();
             long hours = totalSec / 3600;
             long minutes = (totalSec % 3600) / 60;
-
             String timeFormatted = hours + "h " + minutes + "m";
 
-            data[i][0] = t.getTaskName();
-            data[i][1] = t.getSubject();
-            data[i][2] = t.getDeadline();
-            data[i][3] = t.getStatus();
-            data[i][4] = timeFormatted;
+            data[i][0] = t.getTaskId();  // ID column (needed for Edit/Delete)
+            data[i][1] = t.getTaskName();
+            data[i][2] = t.getSubject();
+            data[i][3] = t.getDeadline();
+            data[i][4] = t.getStatus();
+            data[i][5] = timeFormatted;
         }
 
-        // Set JTable model
-        TaskTable_TMD.setModel(new javax.swing.table.DefaultTableModel(
-                data,
-                columns
-        ));
+        TaskTable_TMD.setModel(new javax.swing.table.DefaultTableModel(data, columns));
+
+        // Hide ID column (optional - keeps it available for code but invisible to user)
+        TaskTable_TMD.getColumnModel().getColumn(0).setMinWidth(0);
+        TaskTable_TMD.getColumnModel().getColumn(0).setMaxWidth(0);
     }
+
 
     public TaskManagerDashboard()
     {
@@ -57,18 +56,68 @@ public class TaskManagerDashboard extends JFrame
         setLocationRelativeTo(null);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-        // OPEN AddTaskSubDashboard when clicking Add Task
-        AddTask_TMD.addActionListener(e -> new AddTaskSubDashboard().setVisible(true));
-
-        // Load tasks into JTable
         loadTaskTable();
 
-        setVisible(true);
+        // ADD TASK
+        AddTask_TMD.addActionListener(e ->
+        {
+            new AddTaskSubDashboard(() -> loadTaskTable());
+        });
+
+        // EDIT TASK - NEW
+        EditTask_TMD.addActionListener(e ->
+        {
+            int selectedRow = TaskTable_TMD.getSelectedRow();
+            if (selectedRow == -1)
+            {
+                JOptionPane.showMessageDialog(this,
+                        "Please select a task to edit!",
+                        "No Selection",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            // Get task ID from first column
+            int taskId = Integer.parseInt(TaskTable_TMD.getValueAt(selectedRow, 0).toString());
+            new EditTaskSubDashboard(taskId, () -> loadTaskTable());
+        });
+
+        // DELETE TASK - NEW
+        DeleteTask_TMD.addActionListener(e ->
+        {
+            int selectedRow = TaskTable_TMD.getSelectedRow();
+            if (selectedRow == -1)
+            {
+                JOptionPane.showMessageDialog(this,
+                        "Please select a task to delete!",
+                        "No Selection",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            int taskId = Integer.parseInt(TaskTable_TMD.getValueAt(selectedRow, 0).toString());
+            String taskName = TaskTable_TMD.getValueAt(selectedRow, 1).toString();
+
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Delete task: " + taskName + "?",
+                    "Confirm Delete",
+                    JOptionPane.YES_NO_OPTION);
+
+            if (confirm == JOptionPane.YES_OPTION)
+            {
+                TaskDAO dao = new TaskDAO();
+                dao.deleteTask(taskId);
+                loadTaskTable();
+                JOptionPane.showMessageDialog(this, "Task deleted!");
+            }
+        });
 
         ExitTaskManager_TMD.addActionListener(e ->
         {
-            new MainDashboard();  // open main dashboard
-            dispose();            // close task manager window
+            new MainDashboard();
+            dispose();
         });
+
+        setVisible(true);
     }
 }

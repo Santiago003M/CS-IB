@@ -1,3 +1,4 @@
+package Main;
 import org.jfree.util.StackableRuntimeException;
 
 import javax.swing.*;
@@ -18,11 +19,13 @@ public class Settings extends JFrame
 
     public Settings()
     {
-        SetTitle(SettingsTitle);
-        SetContentPane(SettingsDashboard);
+        setTitle("SettingsTitle");
+        setContentPane(SettingsDashboard);
         setSize(600, 600);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
     }
 }
+
+

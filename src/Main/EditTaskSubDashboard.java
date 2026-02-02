@@ -3,31 +3,27 @@ package Main;
 import com.toedter.calendar.JCalendar;
 import javax.swing.*;
 import java.awt.*;
-import java.sql.*;
+import java.sql.Timestamp;
 import java.util.Date;
+// No need to import Task and TaskDAO since they're in the same package (Main)
 
-public class AddTaskSubDashboard extends JFrame
+public class EditTaskSubDashboard extends JFrame
 {
 
-    // DECLARE ALL FIELDS HERE (class level)
     private JTextField nameField;
     private JTextField subjectField;
     private JComboBox<String> statusBox;
     private JCalendar calendarPicker;
+    private int taskId;
     private Runnable onCloseCallback;
 
-    // Default constructor - calls the other one
-    public AddTaskSubDashboard()
+    public EditTaskSubDashboard(int taskId, Runnable onCloseCallback)
     {
-        this(null);  // Just pass null, no named parameters in Java
-    }
-
-    public AddTaskSubDashboard(Runnable onCloseCallback)
-    {
+        this.taskId = taskId;
         this.onCloseCallback = onCloseCallback;
 
-        setTitle("Add Task");
-        setSize(500, 600);
+        setTitle("Edit Task");
+        setSize(500, 600); // Taller window!
         setLocationRelativeTo(null);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
@@ -51,7 +47,7 @@ public class AddTaskSubDashboard extends JFrame
 
         // Center - Calendar with plenty of space!
         calendarPicker = new JCalendar();
-        calendarPicker.setPreferredSize(new Dimension(400, 300));
+        calendarPicker.setPreferredSize(new Dimension(400, 300)); // Much bigger
 
         JPanel calendarPanel = new JPanel(new BorderLayout());
         calendarPanel.add(new JLabel("Deadline:", JLabel.CENTER), BorderLayout.NORTH);
@@ -59,7 +55,7 @@ public class AddTaskSubDashboard extends JFrame
 
         // Bottom - Buttons
         JPanel buttonPanel = new JPanel();
-        JButton saveBtn = new JButton("Save");
+        JButton saveBtn = new JButton("Save Changes");
         saveBtn.addActionListener(e -> saveTask());
         JButton cancelBtn = new JButton("Cancel");
         cancelBtn.addActionListener(e -> dispose());
@@ -73,8 +69,12 @@ public class AddTaskSubDashboard extends JFrame
 
         add(mainPanel);
 
-        addWindowListener(new java.awt.event.WindowAdapter() {
-            public void windowClosed(java.awt.event.WindowEvent e) {
+        loadTaskData();
+
+        addWindowListener(new java.awt.event.WindowAdapter()
+        {
+            public void windowClosed(java.awt.event.WindowEvent e)
+            {
                 if (onCloseCallback != null) onCloseCallback.run();
             }
         });
@@ -82,37 +82,46 @@ public class AddTaskSubDashboard extends JFrame
         setVisible(true);
     }
 
+
+    private void loadTaskData()
+    {
+        TaskDAO dao = new TaskDAO();
+        Task task = dao.getTaskById(taskId);
+
+        if (task != null)
+        {
+            nameField.setText(task.getTaskName());
+            subjectField.setText(task.getSubject());
+            statusBox.setSelectedItem(task.getStatus());
+            calendarPicker.setDate(new Date(task.getDeadline().getTime()));
+        }
+    }
+
     private void saveTask()
     {
-        String taskName = nameField.getText().trim();
+        String name = nameField.getText().trim();
         String subject = subjectField.getText().trim();
 
-        if (taskName.isEmpty() || subject.isEmpty())
+        if (name.isEmpty() || subject.isEmpty())
         {
             JOptionPane.showMessageDialog(this, "Please fill in all fields!");
             return;
         }
 
-        String sql = "INSERT INTO task (user_id, task_name, subject, deadline, status, created_at) " +
-                "VALUES (?, ?, ?, ?, ?, NOW())";
+        TaskDAO dao = new TaskDAO();
+        Task existingTask = dao.getTaskById(taskId);
 
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql))
-        {
+        Task updatedTask = new Task(
+                taskId,
+                name,
+                subject,
+                new Timestamp(calendarPicker.getDate().getTime()),
+                (String) statusBox.getSelectedItem(),
+                existingTask.getTotalSeconds()
+        );
 
-            stmt.setInt(1, 1);
-            stmt.setString(2, taskName);
-            stmt.setString(3, subject);
-            stmt.setTimestamp(4, new Timestamp(calendarPicker.getDate().getTime()));
-            stmt.setString(5, (String) statusBox.getSelectedItem());
-
-            stmt.executeUpdate();
-            JOptionPane.showMessageDialog(this, "Task saved successfully!");
-            dispose();
-
-        } catch (SQLException ex)
-        {
-            JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
-        }
+        dao.updateTask(updatedTask);
+        JOptionPane.showMessageDialog(this, "Task updated successfully!");
+        dispose();
     }
 }
