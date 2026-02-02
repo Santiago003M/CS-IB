@@ -1,127 +1,95 @@
 package Main;
 
-import com.toedter.calendar.JCalendar;
+import Main.dao.TaskDAO;
+import Main.model.Task;
 import javax.swing.*;
-import java.awt.*;
-import java.sql.Timestamp;
+import java.sql.*;
 import java.util.Date;
-// No need to import Task and TaskDAO since they're in the same package (Main)
 
-public class EditTaskSubDashboard extends JFrame
+public class EditTaskSubDashboard extends AbstractTaskForm
 {
-
-    private JTextField nameField;
-    private JTextField subjectField;
-    private JComboBox<String> statusBox;
-    private JCalendar calendarPicker;
-    private int taskId;
-    private Runnable onCloseCallback;
+    private final int taskId;
+    private final TaskDAO taskDAO;
 
     public EditTaskSubDashboard(int taskId, Runnable onCloseCallback)
     {
+        super("Edit Task", onCloseCallback);
         this.taskId = taskId;
-        this.onCloseCallback = onCloseCallback;
-
-        setTitle("Edit Task");
-        setSize(500, 600); // Taller window!
-        setLocationRelativeTo(null);
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-
-        // Main panel with padding
-        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-
-        // Top panel for text fields
-        JPanel formPanel = new JPanel(new GridLayout(3, 2, 10, 10));
-
-        nameField = new JTextField(20);
-        subjectField = new JTextField(20);
-        statusBox = new JComboBox<>(new String[]{"Not Started", "In Progress", "Completed"});
-
-        formPanel.add(new JLabel("Task Name:"));
-        formPanel.add(nameField);
-        formPanel.add(new JLabel("Subject:"));
-        formPanel.add(subjectField);
-        formPanel.add(new JLabel("Status:"));
-        formPanel.add(statusBox);
-
-        // Center - Calendar with plenty of space!
-        calendarPicker = new JCalendar();
-        calendarPicker.setPreferredSize(new Dimension(400, 300)); // Much bigger
-
-        JPanel calendarPanel = new JPanel(new BorderLayout());
-        calendarPanel.add(new JLabel("Deadline:", JLabel.CENTER), BorderLayout.NORTH);
-        calendarPanel.add(calendarPicker, BorderLayout.CENTER);
-
-        // Bottom - Buttons
-        JPanel buttonPanel = new JPanel();
-        JButton saveBtn = new JButton("Save Changes");
-        saveBtn.addActionListener(e -> saveTask());
-        JButton cancelBtn = new JButton("Cancel");
-        cancelBtn.addActionListener(e -> dispose());
-        buttonPanel.add(saveBtn);
-        buttonPanel.add(cancelBtn);
-
-        // Assemble
-        mainPanel.add(formPanel, BorderLayout.NORTH);
-        mainPanel.add(calendarPanel, BorderLayout.CENTER);
-        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
-
-        add(mainPanel);
-
+        this.taskDAO = new TaskDAO();
         loadTaskData();
-
-        addWindowListener(new java.awt.event.WindowAdapter()
-        {
-            public void windowClosed(java.awt.event.WindowEvent e)
-            {
-                if (onCloseCallback != null) onCloseCallback.run();
-            }
-        });
-
         setVisible(true);
     }
 
-
     private void loadTaskData()
     {
-        TaskDAO dao = new TaskDAO();
-        Task task = dao.getTaskById(taskId);
-
+        Task task = taskDAO.getTaskById(taskId);
         if (task != null)
         {
             nameField.setText(task.getTaskName());
             subjectField.setText(task.getSubject());
             statusBox.setSelectedItem(task.getStatus());
             calendarPicker.setDate(new Date(task.getDeadline().getTime()));
+        } else
+        {
+            JOptionPane.showMessageDialog(this,
+                    "Task not found!",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            dispose();
         }
     }
 
-    private void saveTask()
+    @Override
+    protected String getSaveButtonText()
     {
-        String name = nameField.getText().trim();
-        String subject = subjectField.getText().trim();
+        return "Save Changes";
+    }
 
-        if (name.isEmpty() || subject.isEmpty())
-        {
-            JOptionPane.showMessageDialog(this, "Please fill in all fields!");
-            return;
-        }
+    @Override
+    protected void handleSave()
+    {
+        if (!validateInput()) return;
 
-        TaskDAO dao = new TaskDAO();
-        Task existingTask = dao.getTaskById(taskId);
+        Task existingTask = taskDAO.getTaskById(taskId);
+        if (existingTask == null) return;
 
         Task updatedTask = new Task(
                 taskId,
-                name,
-                subject,
-                new Timestamp(calendarPicker.getDate().getTime()),
+                nameField.getText().trim(),
+                subjectField.getText().trim(),
+                getSelectedTimestamp(),
                 (String) statusBox.getSelectedItem(),
                 existingTask.getTotalSeconds()
         );
 
-        dao.updateTask(updatedTask);
-        JOptionPane.showMessageDialog(this, "Task updated successfully!");
-        dispose();
+        new SwingWorker<Void, Void>()
+        {
+            @Override
+            protected Void doInBackground() throws Exception
+            {
+                taskDAO.updateTask(updatedTask);
+                return null;
+            }
+
+            @Override
+            protected void done()
+            {
+                try
+                {
+                    get();
+                    JOptionPane.showMessageDialog(EditTaskSubDashboard.this,
+                            "Task updated successfully!",
+                            "Success",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    dispose();
+                } catch (Exception e)
+                {
+                    JOptionPane.showMessageDialog(EditTaskSubDashboard.this,
+                            "Error updating task: " + e.getMessage(),
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
     }
 }

@@ -1,118 +1,81 @@
 package Main;
 
-import com.toedter.calendar.JCalendar;
+import Main.util.DatabaseConnection;
 import javax.swing.*;
-import java.awt.*;
 import java.sql.*;
-import java.util.Date;
 
-public class AddTaskSubDashboard extends JFrame
+public class AddTaskSubDashboard extends AbstractTaskForm
 {
 
-    // DECLARE ALL FIELDS HERE (class level)
-    private JTextField nameField;
-    private JTextField subjectField;
-    private JComboBox<String> statusBox;
-    private JCalendar calendarPicker;
-    private Runnable onCloseCallback;
-
-    // Default constructor - calls the other one
     public AddTaskSubDashboard()
     {
-        this(null);  // Just pass null, no named parameters in Java
+        this(null);
     }
 
     public AddTaskSubDashboard(Runnable onCloseCallback)
     {
-        this.onCloseCallback = onCloseCallback;
-
-        setTitle("Add Task");
-        setSize(500, 600);
-        setLocationRelativeTo(null);
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-
-        // Main panel with padding
-        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-
-        // Top panel for text fields
-        JPanel formPanel = new JPanel(new GridLayout(3, 2, 10, 10));
-
-        nameField = new JTextField(20);
-        subjectField = new JTextField(20);
-        statusBox = new JComboBox<>(new String[]{"Not Started", "In Progress", "Completed"});
-
-        formPanel.add(new JLabel("Task Name:"));
-        formPanel.add(nameField);
-        formPanel.add(new JLabel("Subject:"));
-        formPanel.add(subjectField);
-        formPanel.add(new JLabel("Status:"));
-        formPanel.add(statusBox);
-
-        // Center - Calendar with plenty of space!
-        calendarPicker = new JCalendar();
-        calendarPicker.setPreferredSize(new Dimension(400, 300));
-
-        JPanel calendarPanel = new JPanel(new BorderLayout());
-        calendarPanel.add(new JLabel("Deadline:", JLabel.CENTER), BorderLayout.NORTH);
-        calendarPanel.add(calendarPicker, BorderLayout.CENTER);
-
-        // Bottom - Buttons
-        JPanel buttonPanel = new JPanel();
-        JButton saveBtn = new JButton("Save");
-        saveBtn.addActionListener(e -> saveTask());
-        JButton cancelBtn = new JButton("Cancel");
-        cancelBtn.addActionListener(e -> dispose());
-        buttonPanel.add(saveBtn);
-        buttonPanel.add(cancelBtn);
-
-        // Assemble
-        mainPanel.add(formPanel, BorderLayout.NORTH);
-        mainPanel.add(calendarPanel, BorderLayout.CENTER);
-        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
-
-        add(mainPanel);
-
-        addWindowListener(new java.awt.event.WindowAdapter() {
-            public void windowClosed(java.awt.event.WindowEvent e) {
-                if (onCloseCallback != null) onCloseCallback.run();
-            }
-        });
-
+        super("Add Task", onCloseCallback);
+        statusBox.setSelectedItem("Not Started");
         setVisible(true);
     }
 
-    private void saveTask()
+    @Override
+    protected String getSaveButtonText()
     {
+        return "Save Task";
+    }
+
+    @Override
+    protected void handleSave()
+    {
+        if (!validateInput()) return;
+
         String taskName = nameField.getText().trim();
         String subject = subjectField.getText().trim();
+        String status = (String) statusBox.getSelectedItem();
+        Timestamp deadline = getSelectedTimestamp();
 
-        if (taskName.isEmpty() || subject.isEmpty())
+        // Save to database in background
+        new SwingWorker<Void, Void>()
         {
-            JOptionPane.showMessageDialog(this, "Please fill in all fields!");
-            return;
-        }
+            @Override
+            protected Void doInBackground() throws Exception
+            {
+                String sql = "INSERT INTO task (user_id, task_name, subject, deadline, status, created_at) " +
+                        "VALUES (?, ?, ?, ?, ?, NOW())";
 
-        String sql = "INSERT INTO task (user_id, task_name, subject, deadline, status, created_at) " +
-                "VALUES (?, ?, ?, ?, ?, NOW())";
+                try (Connection conn = DatabaseConnection.getConnection();
+                     PreparedStatement stmt = conn.prepareStatement(sql))
+                {
 
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql))
-        {
+                    stmt.setInt(1, 1); // Default user
+                    stmt.setString(2, taskName);
+                    stmt.setString(3, subject);
+                    stmt.setTimestamp(4, deadline);
+                    stmt.setString(5, status);
+                    stmt.executeUpdate();
+                }
+                return null;
+            }
 
-            stmt.setInt(1, 1);
-            stmt.setString(2, taskName);
-            stmt.setString(3, subject);
-            stmt.setTimestamp(4, new Timestamp(calendarPicker.getDate().getTime()));
-            stmt.setString(5, (String) statusBox.getSelectedItem());
-
-            stmt.executeUpdate();
-            JOptionPane.showMessageDialog(this, "Task saved successfully!");
-            dispose();
-
-        } catch (SQLException ex)
-        {
-            JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
-        }
+            @Override
+            protected void done()
+            {
+                try {
+                    get(); // Check for exceptions
+                    JOptionPane.showMessageDialog(AddTaskSubDashboard.this,
+                            "Task saved successfully!",
+                            "Success",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    dispose();
+                } catch (Exception e)
+                {
+                    JOptionPane.showMessageDialog(AddTaskSubDashboard.this,
+                            "Error saving task: " + e.getMessage(),
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
     }
 }

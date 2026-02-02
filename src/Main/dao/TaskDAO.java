@@ -1,5 +1,7 @@
-package Main;
+package Main.dao;
 
+import Main.model.Task;           // Add this
+import Main.util.DatabaseConnection;  // Add this
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;

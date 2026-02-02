@@ -1,13 +1,23 @@
 package Main;
 
+import Main.dao.TaskDAO;
+import Main.model.Task;
+import Main.util.DatabaseConnection;
+import Main.service.InactivityMonitor;
+import Main.service.NotificationService;
+import Main.service.SettingsRepository;
+import Main.viewmodel.TaskViewModel;
+import Main.TaskManagerDashboard;
+import Main.ProductivityLogDashboard;
+import Main.Settings;
+import Main.AddTaskSubDashboard;
+import Main.EditTaskSubDashboard;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
-import java.awt.event.*;
-import java.util.List;
 import java.sql.*;
-
+import java.util.List;
 
 public class MainDashboard extends JFrame
 {
@@ -28,67 +38,67 @@ public class MainDashboard extends JFrame
     private JButton Settings;
     private JComboBox TaskSelector_MD;
 
+    // NEW: Service fields
+    private final InactivityMonitor inactivityMonitor;
+    private final NotificationService notificationService;
+    private final SettingsRepository settingsRepo;
+    private final TaskDAO taskDAO;
+
     // Non-form fields (runtime only):
     private JLabel timeLabel;
-    private Timer timer;
+    private Timer displayTimer;
     private int elapsedTime = 0;
-    private int seconds = 0, minutes = 0, hours = 0;
     private boolean running = false;
-    private long lastActivityTime = System.currentTimeMillis();
-    private Timer inactivityTimer;
-    private static final int INACTIVITY_LIMIT = 5 * 60 * 1000; // 5 minutes in milliseconds
-
+    private static final int INACTIVITY_MINUTES = 5;
     private int currentSessionId = -1;
     private int currentTaskId = -1;
 
     public MainDashboard()
     {
+        // Keep existing initialization
         setContentPane(MainDashboard);
-        setTitle("MainDashboard");
+        setTitle("Study Activity Manager");
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setSize(500, 600);
         setLocationRelativeTo(null);
 
+        // NEW: Initialize services
+        this.taskDAO = new TaskDAO();
+        this.settingsRepo = new SettingsRepository();
+        this.inactivityMonitor = new InactivityMonitor(INACTIVITY_MINUTES);
+        this.notificationService = new NotificationService(taskDAO, settingsRepo, this);
+
+        // Keep existing UI setup
         loadTasksIntoDropdown();
-        loadUpcomingDeadlines();      // ADD THIS
-        checkAndShowReminders();      // ADD THIS
+        loadUpcomingDeadlines();
         setupInactivityMonitor();
+        setupTimerDisplay();
 
-        // Setup timer display inside MainTimer_MD
-        timeLabel = new JLabel("00:00:00");
-        timeLabel.setFont(new Font("Verdana", Font.PLAIN, 30));
-        if (MainTimer_MD != null)
+        // NEW: Start notification service if enabled
+        if (settingsRepo.areRemindersEnabled())
         {
-            MainTimer_MD.setLayout(new BorderLayout());
-            MainTimer_MD.add(timeLabel, BorderLayout.CENTER);
+            notificationService.startMonitoring();
+            checkAndShowReminders();
         }
 
-        // Load tasks
-        if (TaskSelector_MD != null)
-        {
-            loadTasksIntoDropdown();
-            setupInactivityMonitor();
-        }
+        // Keep existing listeners
+        attachListeners();
 
-        // Timer
-        timer = new Timer(1000, e ->
-        {
-            elapsedTime += 1000;
-            hours = (elapsedTime / 3600000);
-            minutes = (elapsedTime / 60000) % 60;
-            seconds = (elapsedTime / 1000) % 60;
-            timeLabel.setText(String.format("%02d:%02d:%02d", hours, minutes, seconds));
-        });
+        setVisible(true);
+    }
 
-        // Listeners
+    private void attachListeners()
+    {
         StartTimer_MD.addActionListener(e -> startTimer());
         PauseTimer_MD.addActionListener(e -> pauseTimer());
-        ResumeTimer_MD.addActionListener(e ->
-        {
-            if (!running) { running = true; timer.start(); }
-        });
+        ResumeTimer_MD.addActionListener(e -> resumeTimer());
         ResetTimer_MD.addActionListener(e -> resetTimer());
-        Exit_MD.addActionListener(e -> System.exit(0));
+        Exit_MD.addActionListener(e ->
+        {
+            notificationService.stop();
+            inactivityMonitor.stop();
+            System.exit(0);
+        });
 
         GoToTaskManager_MD.addActionListener(e ->
         {
@@ -102,13 +112,9 @@ public class MainDashboard extends JFrame
             dispose();
         });
 
-        Settings.addActionListener(e ->
-        {
-            new Settings();
-            dispose();
+        Settings.addActionListener(e -> {
+            new Settings(this);
         });
-
-        setVisible(true);
     }
 
     private void loadTasksIntoDropdown()
@@ -135,137 +141,239 @@ public class MainDashboard extends JFrame
         });
     }
 
+    private void setupTimerDisplay()
+    {
+        timeLabel = new JLabel("00:00:00");
+        timeLabel.setFont(new Font("Verdana", Font.PLAIN, 30));
+        if (MainTimer_MD != null)
+        {
+            MainTimer_MD.setLayout(new BorderLayout());
+            MainTimer_MD.add(timeLabel, BorderLayout.CENTER);
+        }
+
+        displayTimer = new Timer(1000, e ->
+        {
+            elapsedTime += 1000;
+            updateTimeLabel();
+        });
+    }
+
+    private void updateTimeLabel()
+    {
+        int hours = (elapsedTime / 3600000);
+        int minutes = (elapsedTime / 60000) % 60;
+        int seconds = (elapsedTime / 1000) % 60;
+        timeLabel.setText(String.format("%02d:%02d:%02d", hours, minutes, seconds));
+    }
+
     private void startTimer()
     {
         if (running) return;
-        running = true;
-        timer.start();
 
-        String sql = "INSERT INTO study_session (user_id, task_id, start_time) VALUES (?, ?, NOW())";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS))
-        {
-            stmt.setInt(1, 1);
-            if (currentTaskId > 0)
+        new SwingWorker<Integer, Void>() {
+            @Override
+            protected Integer doInBackground() throws Exception
             {
-                stmt.setInt(2, currentTaskId);
-                updateTaskStatus(currentTaskId, "In Progress");
-            } else
-            {
-                stmt.setNull(2, Types.INTEGER);
+                String sql = "INSERT INTO study_session (user_id, task_id, start_time) VALUES (?, ?, NOW())";
+                try (Connection conn = DatabaseConnection.getConnection();
+                     PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS))
+                {
+                    stmt.setInt(1, 1);
+                    if (currentTaskId > 0)
+                    {
+                        stmt.setInt(2, currentTaskId);
+                    } else
+                    {
+                        stmt.setNull(2, Types.INTEGER);
+                    }
+
+                    stmt.executeUpdate();
+                    ResultSet rs = stmt.getGeneratedKeys();
+                    if (rs.next())
+                    {
+                        return rs.getInt(1);
+                    }
+                }
+                return -1;
             }
-            stmt.executeUpdate();
-            ResultSet rs = stmt.getGeneratedKeys();
-            if (rs.next()) currentSessionId = rs.getInt(1);
-        } catch (SQLException ex)
-        {
-            ex.printStackTrace();
-        }
+
+            @Override
+            protected void done()
+            {
+                try
+                {
+                    currentSessionId = get();
+                    if (currentSessionId != -1)
+                    {
+                        running = true;
+                        displayTimer.start();
+                        if (currentTaskId > 0)
+                        {
+                            updateTaskStatus(currentTaskId, "In Progress");
+                        }
+                    }
+                } catch (Exception e)
+                {
+                    JOptionPane.showMessageDialog(MainDashboard.this,
+                            "Failed to start session: " + e.getMessage(),
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
     }
 
     private void pauseTimer()
     {
         if (!running) return;
         running = false;
-        timer.stop();
+        displayTimer.stop();
         updateSessionDuration();
+    }
+
+    private void resumeTimer()
+    {
+        if (running) return;
+        running = true;
+        displayTimer.start();
     }
 
     private void resetTimer()
     {
-        timer.stop();
+        displayTimer.stop();
         running = false;
         endSession(false);
+        resetTimerDisplay();
+    }
+
+    private void resetTimerDisplay()
+    {
         elapsedTime = 0;
-        timeLabel.setText("00:00:00");
+        updateTimeLabel();
     }
 
     private void updateSessionDuration()
     {
         if (currentSessionId == -1) return;
-        String sql = "UPDATE study_session SET duration = ? WHERE session_id = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql))
+
+        new SwingWorker<Void, Void>()
         {
-            stmt.setInt(1, elapsedTime / 1000);
-            stmt.setInt(2, currentSessionId);
-            stmt.executeUpdate();
-        } catch (SQLException e) { e.printStackTrace(); }
+            @Override
+            protected Void doInBackground() throws Exception
+            {
+                String sql = "UPDATE study_session SET duration = ? WHERE session_id = ?";
+                try (Connection conn = DatabaseConnection.getConnection();
+                     PreparedStatement stmt = conn.prepareStatement(sql))
+                {
+                    stmt.setInt(1, elapsedTime / 1000);
+                    stmt.setInt(2, currentSessionId);
+                    stmt.executeUpdate();
+                }
+                return null;
+            }
+        }.execute();
     }
 
     private void endSession(boolean complete)
     {
         if (currentSessionId == -1) return;
-        String sql = "UPDATE study_session SET end_time = NOW(), duration = ? WHERE session_id = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql))
+
+        new SwingWorker<Void, Void>()
         {
-            stmt.setInt(1, elapsedTime / 1000);
-            stmt.setInt(2, currentSessionId);
-            stmt.executeUpdate();
-            if (complete && currentTaskId > 0) updateTaskStatus(currentTaskId, "Completed");
-            currentSessionId = -1;
-        } catch (SQLException e) { e.printStackTrace(); }
+            @Override
+            protected Void doInBackground() throws Exception
+            {
+                String sql = "UPDATE study_session SET end_time = NOW(), duration = ? WHERE session_id = ?";
+                try (Connection conn = DatabaseConnection.getConnection();
+                     PreparedStatement stmt = conn.prepareStatement(sql))
+                {
+                    stmt.setInt(1, elapsedTime / 1000);
+                    stmt.setInt(2, currentSessionId);
+                    stmt.executeUpdate();
+
+                    if (complete && currentTaskId > 0)
+                    {
+                        updateTaskStatus(currentTaskId, "Completed");
+                    }
+                }
+                return null;
+            }
+
+            @Override
+            protected void done()
+            {
+                currentSessionId = -1;
+            }
+        }.execute();
     }
 
     private void updateTaskStatus(int taskId, String status)
     {
-        String sql = "UPDATE task SET status = ? WHERE task_id = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql))
+        new SwingWorker<Void, Void>()
         {
-            stmt.setString(1, status);
-            stmt.setInt(2, taskId);
-            stmt.executeUpdate();
-        } catch (SQLException e) { e.printStackTrace(); }
+            @Override
+            protected Void doInBackground() throws Exception
+            {
+                String sql = "UPDATE task SET status = ? WHERE task_id = ?";
+                try (Connection conn = DatabaseConnection.getConnection();
+                     PreparedStatement stmt = conn.prepareStatement(sql))
+                {
+                    stmt.setString(1, status);
+                    stmt.setInt(2, taskId);
+                    stmt.executeUpdate();
+                }
+                return null;
+            }
+        }.execute();
     }
 
     private void setupInactivityMonitor()
     {
-        // Check every 10 seconds
-        inactivityTimer = new Timer(10000, e ->
+        inactivityMonitor.addListener(new InactivityMonitor.InactivityListener()
         {
-            if (!running) return; // Only check if timer is running
-
-            long timeSinceLastActivity = System.currentTimeMillis() - lastActivityTime;
-
-            if (timeSinceLastActivity > INACTIVITY_LIMIT)
+            @Override
+            public void onInactivityDetected()
             {
-                // Auto-pause
-                timer.stop();
-                running = false;
-                updateSessionDuration(); // Save current time
-
-                // Ask user
-                int response = JOptionPane.showConfirmDialog(this,
-                        "No activity detected for 5 minutes.\nAre you still studying?\n\n" +
-                                "Click YES to continue, NO to stop timer.",
-                        "Inactivity Detected",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.QUESTION_MESSAGE);
-
-                if (response == JOptionPane.YES_OPTION)
+                if (running)
                 {
-                    // Resume
-                    running = true;
-                    timer.start();
-                    lastActivityTime = System.currentTimeMillis(); // Reset timer
-                } else
-                {
-                    // Stop completely and reset
-                    endSession(false);
-                    elapsedTime = 0;
-                    timeLabel.setText("00:00:00");
+                    handleInactivityDetected();
                 }
             }
-        });
-        inactivityTimer.start();
 
-        // Track ALL mouse and keyboard activity in the entire app
-        Toolkit.getDefaultToolkit().addAWTEventListener(event ->
+            @Override
+            public void onActivityResumed()
+            {
+                // Not used - we handle resume via dialog
+            }
+        });
+        inactivityMonitor.start();
+    }
+
+    private void handleInactivityDetected()
+    {
+        SwingUtilities.invokeLater(() ->
         {
-            lastActivityTime = System.currentTimeMillis();
-        }, AWTEvent.MOUSE_EVENT_MASK | AWTEvent.KEY_EVENT_MASK);
+            // Auto-pause timer
+            pauseTimer();
+
+            int response = JOptionPane.showConfirmDialog(this,
+                    "No activity detected for " + INACTIVITY_MINUTES + " minutes.\n" +
+                            "Are you still studying?\n\n" +
+                            "Click YES to continue, NO to stop timer.",
+                    "Inactivity Detected",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+
+            if (response == JOptionPane.YES_OPTION)
+            {
+                resumeTimer();
+                inactivityMonitor.resetTimer();
+            } else
+            {
+                endSession(false);
+                resetTimerDisplay();
+            }
+        });
     }
 
     private void loadUpcomingDeadlines()
@@ -274,7 +382,7 @@ public class MainDashboard extends JFrame
         DefaultTableModel model = new DefaultTableModel(columns, 0);
 
         TaskDAO dao = new TaskDAO();
-        List<Task> upcoming = dao.getUpcomingDeadlines(30); // Show next 30 days
+        List<Task> upcoming = dao.getUpcomingDeadlines(30);
 
         java.time.LocalDateTime now = java.time.LocalDateTime.now();
 
@@ -307,22 +415,20 @@ public class MainDashboard extends JFrame
                 timeRemaining = daysRemaining + " days left";
             }
 
-            // Color coding logic for urgency
             Object[] row =
-            {
-                    task.getTaskName(),
-                    task.getSubject(),
-                    task.getDeadline().toLocalDateTime().format(
-                            java.time.format.DateTimeFormatter.ofPattern("MMM dd, HH:mm")
-                    ),
-                    timeRemaining
-            };
+                    {
+                            task.getTaskName(),
+                            task.getSubject(),
+                            task.getDeadline().toLocalDateTime().format(
+                                    java.time.format.DateTimeFormatter.ofPattern("MMM dd, HH:mm")
+                            ),
+                            timeRemaining
+                    };
             model.addRow(row);
         }
 
         UpcomingDeadlinesTable_MD.setModel(model);
 
-        // Set custom renderer to color-code urgency
         UpcomingDeadlinesTable_MD.getColumnModel().getColumn(3).setCellRenderer(
                 new DefaultTableCellRenderer()
                 {
@@ -339,74 +445,64 @@ public class MainDashboard extends JFrame
                             c.setFont(c.getFont().deriveFont(Font.BOLD));
                         } else if (val.contains("hours left"))
                         {
-                            c.setForeground(new Color(220, 53, 69)); // Red-ish
+                            c.setForeground(new Color(220, 53, 69));
                         } else if (val.contains("1 day"))
                         {
-                            c.setForeground(new Color(255, 193, 7)); // Yellow/Orange
+                            c.setForeground(new Color(255, 193, 7));
                         } else
                         {
-                            c.setForeground(new Color(34, 139, 34)); // Green
+                            c.setForeground(new Color(34, 139, 34));
                         }
                         return c;
                     }
                 }
         );
 
-        // Adjust column widths
         UpcomingDeadlinesTable_MD.getColumnModel().getColumn(0).setPreferredWidth(150);
         UpcomingDeadlinesTable_MD.getColumnModel().getColumn(3).setPreferredWidth(120);
     }
 
     private void checkAndShowReminders()
     {
-        // Check if reminders are enabled in settings (you'll need to load this from DB or file)
-        // For now, we'll check but you should integrate with your Settings class
-        boolean remindersEnabled = true; // Load from settings storage
+        if (!settingsRepo.areRemindersEnabled()) return;
 
-        if (!remindersEnabled) return;
-
-        TaskDAO dao = new TaskDAO();
-        List<Task> urgentTasks = dao.getTasksDueWithin24Hours();
-
-        if (!urgentTasks.isEmpty())
+        new SwingWorker<List<Task>, Void>()
         {
-            StringBuilder message = new StringBuilder();
-            message.append("⚠️ REMINDER: You have tasks due soon!\n\n");
-
-            for (Task task : urgentTasks)
+            @Override
+            protected List<Task> doInBackground()
             {
-                java.time.Duration remaining = java.time.Duration.between(
-                        java.time.LocalDateTime.now(),
-                        task.getDeadline().toLocalDateTime()
-                );
-                long hours = remaining.toHours();
-
-                if (hours < 0)
-                {
-                    message.append("• ").append(task.getTaskName())
-                            .append(" - OVERDUE!\n");
-                } else if (hours == 0)
-                {
-                    message.append("• ").append(task.getTaskName())
-                            .append(" - Due within the hour!\n");
-                } else
-                {
-                    message.append("• ").append(task.getTaskName())
-                            .append(" - ").append(hours).append(" hours remaining\n");
-                }
+                return taskDAO.getTasksDueWithin24Hours();
             }
 
-            message.append("\nStay focused and complete these tasks!");
+            @Override
+            protected void done()
+            {
+                try
+                {
+                    List<Task> urgentTasks = get();
+                    if (urgentTasks.isEmpty()) return;
 
-            JOptionPane.showMessageDialog(
-                    this,
-                    message.toString(),
-                    "Daily Reminder - Upcoming Deadlines",
-                    JOptionPane.WARNING_MESSAGE
-            );
-        }
+                    StringBuilder message = new StringBuilder();
+                    message.append("⚠️ REMINDER: You have tasks due soon!\n\n");
+
+                    for (Task task : urgentTasks)
+                    {
+                        TaskViewModel vm = new TaskViewModel(task);
+                        message.append("• ").append(vm.getTaskName())
+                                .append(" - ").append(vm.getTimeRemaining()).append("\n");
+                    }
+
+                    JOptionPane.showMessageDialog(MainDashboard.this,
+                            message.toString(),
+                            "Daily Reminder - Upcoming Deadlines",
+                            JOptionPane.WARNING_MESSAGE);
+                } catch (Exception e)
+                {
+                    e.printStackTrace();
+                }
+            }
+        }.execute();
     }
-
 
     public static void main(String[] args) { new MainDashboard(); }
 }

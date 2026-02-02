@@ -1,6 +1,5 @@
-package Main;
+package Main.model;
 
-import java.sql.Timestamp;
 
 public class Task
 {

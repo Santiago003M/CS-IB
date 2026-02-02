@@ -1,5 +1,7 @@
 package Main;
 
+import Main.dao.TaskDAO;
+import Main.model.Task;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;

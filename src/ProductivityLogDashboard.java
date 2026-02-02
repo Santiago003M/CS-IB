@@ -1,16 +1,18 @@
 package Main;
 
+import Main.dao.TaskDAO;
+import Main.model.Task;
+import Main.util.DatabaseConnection;
+import Main.dao.StudySessionDAO;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
-import org.jfree.chart.labels.StandardPieToolTipGenerator;
 import org.jfree.chart.plot.PiePlot;
 import org.jfree.data.general.DefaultPieDataset;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.text.NumberFormat;
 
 public class ProductivityLogDashboard extends JFrame
 {
