@@ -1,4 +1,4 @@
-package Main;
+package Main.view;
 
 import com.toedter.calendar.JCalendar;
 import javax.swing.*;

@@ -1,4 +1,4 @@
-package Main;
+package Main.view;
 
 import javax.swing.*;
 import java.util.ArrayList;

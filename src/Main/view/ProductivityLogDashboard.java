@@ -1,8 +1,6 @@
-package Main;
+package Main.view;
 
-import Main.dao.TaskDAO;
-import Main.model.Task;
-import Main.util.DatabaseConnection;
+import Main.MainDashboard;
 import Main.dao.StudySessionDAO;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;

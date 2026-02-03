@@ -1,9 +1,11 @@
 package Main.dao;
 
-import Main.util.DatabaseConnection;  // Add this
+import Main.util.DatabaseConnection;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDate;
+
 
 public class StudySessionDAO
 {
@@ -64,4 +66,54 @@ public class StudySessionDAO
         } catch (SQLException e) { e.printStackTrace(); }
         return sessions;
     }
+
+    public int getStudyStreak()
+    {
+        String sql = "SELECT DISTINCT DATE(start_time) as study_date " +
+                "FROM study_session " +
+                "WHERE start_time >= DATE_SUB(NOW(), INTERVAL 365 DAY) " +
+                "ORDER BY study_date DESC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql))
+        {
+
+            List<LocalDate> studyDates = new ArrayList<>();
+            while (rs.next())
+            {
+                studyDates.add(rs.getDate("study_date").toLocalDate());
+            }
+
+            if (studyDates.isEmpty()) return 0;
+
+            // Calculate streak
+            int streak = 0;
+            LocalDate today = LocalDate.now();
+            LocalDate yesterday = today.minusDays(1);
+
+            // Check if studied today or yesterday (streak is active)
+            boolean streakActive = studyDates.contains(today) || studyDates.contains(yesterday);
+
+            if (!streakActive) return 0;
+
+            // Count consecutive days backwards from today
+            LocalDate checkDate = studyDates.contains(today) ? today : yesterday;
+
+            while (studyDates.contains(checkDate))
+            {
+                streak++;
+                checkDate = checkDate.minusDays(1);
+            }
+
+            return streak;
+
+        } catch (SQLException e)
+        {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+
 }

@@ -1,4 +1,4 @@
-package Main;
+package Main.view;
 
 import Main.util.DatabaseConnection;
 import javax.swing.*;

@@ -1,9 +1,8 @@
-package Main;
+package Main.view;
 
 import Main.dao.TaskDAO;
 import Main.model.Task;
 import javax.swing.*;
-import java.sql.*;
 import java.util.Date;
 
 public class EditTaskSubDashboard extends AbstractTaskForm

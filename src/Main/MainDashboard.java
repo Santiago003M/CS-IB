@@ -6,32 +6,28 @@ import Main.util.DatabaseConnection;
 import Main.service.InactivityMonitor;
 import Main.service.NotificationService;
 import Main.service.SettingsRepository;
+import Main.view.ProductivityLogDashboard;
+import Main.view.Settings;
+import Main.view.TaskManagerDashboard;
 import Main.viewmodel.TaskViewModel;
-import Main.TaskManagerDashboard;
-import Main.ProductivityLogDashboard;
-import Main.Settings;
-import Main.AddTaskSubDashboard;
-import Main.EditTaskSubDashboard;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.sql.*;
 import java.util.List;
+import Main.dao.StudySessionDAO;
 
 public class MainDashboard extends JFrame
 {
     // Form-bound fields (must match MainDashboard.form exactly):
     private JPanel MainDashboard;
-    private JPanel MainDashboard_2;
-    private JPanel MainDashboard_3;
     private JPanel MainTimer_MD;
     private JButton StartTimer_MD;
     private JButton PauseTimer_MD;
     private JButton ResumeTimer_MD;
     private JButton ResetTimer_MD;
     private JTable UpcomingDeadlinesTable_MD;
-    private JLabel UpcomingDeadlines_MD;
     private JButton GoToTaskManager_MD;
     private JButton GoToProdLog_MD;
     private JButton Exit_MD;
@@ -46,6 +42,7 @@ public class MainDashboard extends JFrame
 
     // Non-form fields (runtime only):
     private JLabel timeLabel;
+    private JButton displayStudyStreak;
     private Timer displayTimer;
     private int elapsedTime = 0;
     private boolean running = false;
@@ -115,6 +112,8 @@ public class MainDashboard extends JFrame
         Settings.addActionListener(e -> {
             new Settings(this);
         });
+
+        displayStudyStreak.addActionListener(e -> displayStudyStreak());
     }
 
     private void loadTasksIntoDropdown()
@@ -505,4 +504,71 @@ public class MainDashboard extends JFrame
     }
 
     public static void main(String[] args) { new MainDashboard(); }
+
+    /**
+     * Called when returning from TaskManager with a selected task
+     */
+    public void setSelectedTask(int taskId, String taskName)
+    {
+        this.currentTaskId = taskId;
+
+        // Find and select the task in the dropdown
+        for (int i = 0; i < TaskSelector_MD.getItemCount(); i++)
+        {
+            String item = (String) TaskSelector_MD.getItemAt(i);
+            if (item.startsWith(taskId + ":"))
+            {
+                TaskSelector_MD.setSelectedIndex(i);
+                break;
+            }
+        }
+
+        // Show confirmation to user
+        JOptionPane.showMessageDialog(this,
+                "Task '" + taskName + "' is now linked to the timer!\n\n" +
+                        "Click 'Start Timer' to begin studying.",
+                "Task Linked Successfully",
+                JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void displayStudyStreak()
+    {
+        new SwingWorker<Integer, Void>()
+        {
+            @Override
+            protected Integer doInBackground()
+            {
+                StudySessionDAO dao = new StudySessionDAO();
+                return dao.getStudyStreak();
+            }
+
+            @Override
+            protected void done()
+            {
+                try
+                {
+                    int streak = get();
+                    String message;
+                    if (streak > 0)
+                    {
+                        message = String.format("🔥 Study Streak: %d day%s!", streak, streak > 1 ? "s" : "");
+                    } else
+                    {
+                        message = "Start studying today to build your streak!";
+                    }
+
+                    // You can display this in a label or popup
+                    JOptionPane.showMessageDialog(MainDashboard.this,
+                            message,
+                            "Study Streak",
+                            JOptionPane.INFORMATION_MESSAGE);
+
+                } catch (Exception e)
+                {
+                    e.printStackTrace();
+                }
+            }
+        }.execute();
+    }
+
 }

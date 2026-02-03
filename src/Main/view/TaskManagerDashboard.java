@@ -1,11 +1,12 @@
-package Main;
+package Main.view;
 
+import Main.MainDashboard;
 import Main.dao.TaskDAO;
 import Main.model.Task;
+
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.*;
-import java.util.List;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
 public class TaskManagerDashboard extends JFrame
 {
@@ -121,5 +122,37 @@ public class TaskManagerDashboard extends JFrame
         });
 
         setVisible(true);
+
+        LinkTaskToTimer_TMD.addActionListener(e -> {
+            int selectedRow = TaskTable_TMD.getSelectedRow();
+            if (selectedRow == -1)
+            {
+                JOptionPane.showMessageDialog(this,
+                        "Please select a task to link!",
+                        "No Selection",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            // Get task ID and name from selected row
+            int taskId = Integer.parseInt(TaskTable_TMD.getValueAt(selectedRow, 0).toString());
+            String taskName = TaskTable_TMD.getValueAt(selectedRow, 1).toString();
+
+            // Confirm with user
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Link task '" + taskName + "' to timer?\n\n" +
+                            "This will return you to the main dashboard with this task pre-selected.",
+                    "Link Task",
+                    JOptionPane.YES_NO_OPTION);
+
+            if (confirm == JOptionPane.YES_OPTION)
+            {
+                // Return to MainDashboard with selected task
+                MainDashboard main = new MainDashboard();
+                main.setSelectedTask(taskId, taskName);
+                dispose();
+            }
+        });
+
     }
 }
