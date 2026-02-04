@@ -8,7 +8,7 @@ public class Task
     private String subject;
     private java.sql.Timestamp deadline;
     private String status;
-    private long totalSeconds;  // total study duration in seconds
+    private long totalSeconds;
 
     public Task(int taskId, String taskName, String subject,
                 java.sql.Timestamp deadline, String status,
@@ -22,7 +22,6 @@ public class Task
         this.totalSeconds = totalSeconds;
     }
 
-    // ====== GETTERS ======
     public int getTaskId() { return taskId; }
     public String getTaskName() { return taskName; }
     public String getSubject() { return subject; }
@@ -30,7 +29,7 @@ public class Task
     public String getStatus() { return status; }
     public long getTotalSeconds() { return totalSeconds; }
 
-    // Convenience methods
+
     public double getTotalHours()
     {
         return totalSeconds / 3600.0;

@@ -6,7 +6,8 @@ import Main.model.Task;
 import java.sql.SQLException;
 import java.util.List;
 
-public class TaskService {
+public class TaskService
+{
     private final TaskDAO taskDAO;
 
     public TaskService(TaskDAO taskDAO)

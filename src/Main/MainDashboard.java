@@ -18,29 +18,33 @@ import java.sql.*;
 import java.util.List;
 import Main.dao.StudySessionDAO;
 
+
+
 public class MainDashboard extends JFrame
 {
     // Form-bound fields (must match MainDashboard.form exactly):
     private JPanel MainDashboard;
+    private JPanel MainDashboard_2;
+    private JPanel MainDashboard_3;
     private JPanel MainTimer_MD;
     private JButton StartTimer_MD;
     private JButton PauseTimer_MD;
     private JButton ResumeTimer_MD;
     private JButton ResetTimer_MD;
     private JTable UpcomingDeadlinesTable_MD;
+    private JLabel UpcomingDeadlines_MD;
     private JButton GoToTaskManager_MD;
     private JButton GoToProdLog_MD;
     private JButton Exit_MD;
     private JButton Settings;
     private JComboBox TaskSelector_MD;
 
-    // NEW: Service fields
+    // Service fields
     private final InactivityMonitor inactivityMonitor;
     private final NotificationService notificationService;
     private final SettingsRepository settingsRepo;
     private final TaskDAO taskDAO;
 
-    // Non-form fields (runtime only):
     private JLabel timeLabel;
     private JButton displayStudyStreak;
     private Timer displayTimer;
@@ -52,33 +56,28 @@ public class MainDashboard extends JFrame
 
     public MainDashboard()
     {
-        // Keep existing initialization
         setContentPane(MainDashboard);
         setTitle("Study Activity Manager");
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setSize(500, 600);
         setLocationRelativeTo(null);
 
-        // NEW: Initialize services
         this.taskDAO = new TaskDAO();
         this.settingsRepo = new SettingsRepository();
         this.inactivityMonitor = new InactivityMonitor(INACTIVITY_MINUTES);
         this.notificationService = new NotificationService(taskDAO, settingsRepo, this);
 
-        // Keep existing UI setup
         loadTasksIntoDropdown();
         loadUpcomingDeadlines();
         setupInactivityMonitor();
         setupTimerDisplay();
 
-        // NEW: Start notification service if enabled
         if (settingsRepo.areRemindersEnabled())
         {
             notificationService.startMonitoring();
             checkAndShowReminders();
         }
 
-        // Keep existing listeners
         attachListeners();
 
         setVisible(true);
@@ -169,7 +168,8 @@ public class MainDashboard extends JFrame
     {
         if (running) return;
 
-        new SwingWorker<Integer, Void>() {
+        new SwingWorker<Integer, Void>()
+        {
             @Override
             protected Integer doInBackground() throws Exception
             {

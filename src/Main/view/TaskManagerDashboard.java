@@ -45,7 +45,6 @@ public class TaskManagerDashboard extends JFrame
 
         TaskTable_TMD.setModel(new javax.swing.table.DefaultTableModel(data, columns));
 
-        // Hide ID column (optional - keeps it available for code but invisible to user)
         TaskTable_TMD.getColumnModel().getColumn(0).setMinWidth(0);
         TaskTable_TMD.getColumnModel().getColumn(0).setMaxWidth(0);
     }
@@ -85,7 +84,6 @@ public class TaskManagerDashboard extends JFrame
             new EditTaskSubDashboard(taskId, () -> loadTaskTable());
         });
 
-        // DELETE TASK - NEW
         DeleteTask_TMD.addActionListener(e ->
         {
             int selectedRow = TaskTable_TMD.getSelectedRow();
@@ -123,7 +121,8 @@ public class TaskManagerDashboard extends JFrame
 
         setVisible(true);
 
-        LinkTaskToTimer_TMD.addActionListener(e -> {
+        LinkTaskToTimer_TMD.addActionListener(e ->
+        {
             int selectedRow = TaskTable_TMD.getSelectedRow();
             if (selectedRow == -1)
             {

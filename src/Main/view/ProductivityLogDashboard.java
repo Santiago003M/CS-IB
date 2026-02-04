@@ -26,7 +26,7 @@ public class ProductivityLogDashboard extends JFrame
         sessionDAO = new StudySessionDAO();
 
         setContentPane(mainPanel_PL);
-        setSize(900, 700); // Made window bigger for chart
+        setSize(900, 700);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         // ===== GET REAL DATA FROM DATABASE =====
@@ -49,7 +49,7 @@ public class ProductivityLogDashboard extends JFrame
                 false   // No URLs
         );
 
-        // ===== CONFIGURE PLOT WITH HOVER TOOLTIPS =====
+        // hovering tooltips
         PiePlot plot = (PiePlot) pieChart.getPlot();
 
         // COLORS
@@ -59,14 +59,12 @@ public class ProductivityLogDashboard extends JFrame
         plot.setBackgroundPaint(Color.WHITE);
         plot.setOutlineVisible(false);
 
-        // Add visible labels with exact percentages
         plot.setLabelGenerator(new org.jfree.chart.labels.StandardPieSectionLabelGenerator(
                 "{0}\n{1} tasks\n({2})",                    // Format: Name, Count, Percentage
                 java.text.NumberFormat.getIntegerInstance(), // Count as integer
                 java.text.NumberFormat.getPercentInstance()  // Percentage format
         ));
 
-        // Keep your existing tooltip generator for hover details
         plot.setToolTipGenerator(new org.jfree.chart.labels.StandardPieToolTipGenerator(
                 "{0}: {1} tasks ({2})",
                 java.text.NumberFormat.getIntegerInstance(),
@@ -76,11 +74,10 @@ public class ProductivityLogDashboard extends JFrame
         plot.setLabelFont(new Font("Segoe UI", Font.BOLD, 12));
         plot.setLabelBackgroundPaint(new Color(255, 255, 255, 220));
         plot.setLabelOutlinePaint(Color.GRAY);
-        plot.setSimpleLabels(false);  // Use curved labels for better fit
+        plot.setSimpleLabels(false);
 
-        // Make the chart look nicer
         plot.setLabelFont(new Font("Arial", Font.BOLD, 12));
-        plot.setLabelBackgroundPaint(new Color(255, 255, 255, 200)); // Semi-transparent white
+        plot.setLabelBackgroundPaint(new Color(255, 255, 255, 200));
         plot.setLabelOutlinePaint(Color.BLACK);
         plot.setLabelShadowPaint(null);
 
@@ -89,7 +86,7 @@ public class ProductivityLogDashboard extends JFrame
         plot.setExplodePercent("In Progress", 0.005);
         plot.setExplodePercent("Not Started", 0.005);
 
-        // ===== ADD CHART TO PANEL =====
+        // add chart to panel
         ChartPanel piePanel = new ChartPanel(pieChart);
         piePanel.setPreferredSize(new Dimension(500, 400)); // Bigger chart
         piePanel.setMouseWheelEnabled(true); // Allow zoom with mouse wheel
@@ -97,17 +94,15 @@ public class ProductivityLogDashboard extends JFrame
         ChartPanelContainer.setLayout(new BorderLayout());
         ChartPanelContainer.add(piePanel, BorderLayout.CENTER);
 
-        // ===== SHOW WEEKLY SUMMARY =====
+        // show weekly summary
         JOptionPane.showMessageDialog(this,
                 String.format("📊 This Week's Study Time: %.1f hours\n\n" +
                         "Keep up the good work!", weeklyHours),
                 "Weekly Progress",
                 JOptionPane.INFORMATION_MESSAGE);
 
-        // ===== LOAD REAL DATA INTO TABLE =====
         loadSessionTable();
 
-        // ===== EXIT BUTTON =====
         ExitProdLog_PL.addActionListener(e ->
         {
             new MainDashboard();

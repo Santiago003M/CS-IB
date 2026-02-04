@@ -28,7 +28,7 @@ public class TaskViewModel
         return task.getDeadline().toLocalDateTime().format(formatter);
     }
 
-    // This calculates "3 days left" string
+    // calculate "3 days left left" string
     public String getTimeRemaining()
     {
         LocalDateTime now = LocalDateTime.now();
@@ -68,13 +68,13 @@ public class TaskViewModel
             return Color.RED;
         } else if (hoursRemaining <= 24)
         {
-            return new Color(220, 53, 69); // Red-ish
+            return new Color(220, 53, 69);
         } else if (hoursRemaining <= 48)
         {
-            return new Color(255, 193, 7); // Yellow/Orange
+            return new Color(255, 193, 7);
         } else
         {
-            return new Color(34, 139, 34); // Green
+            return new Color(34, 139, 34);
         }
     }
 

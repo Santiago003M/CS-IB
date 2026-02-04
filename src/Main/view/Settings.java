@@ -114,7 +114,8 @@ public class Settings extends JDialog
                         "Export Complete",
                         JOptionPane.INFORMATION_MESSAGE);
 
-            } catch (Exception ex) {
+            } catch (Exception ex)
+            {
                 JOptionPane.showMessageDialog(this,
                         "Export failed: " + ex.getMessage(),
                         "Error",
@@ -131,10 +132,8 @@ public class Settings extends JDialog
             settingsRepo.setRemindersEnabled(EnableDisableReminders_S.isSelected());
         }
 
-        // Optional: Save EnablePopUps too if you want
         if (EnablePopUps != null)
         {
-            // You can add this to SettingsRepository later
             System.out.println("Popups enabled: " + EnablePopUps.isSelected());
         }
 

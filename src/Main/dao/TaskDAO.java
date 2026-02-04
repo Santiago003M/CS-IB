@@ -1,7 +1,7 @@
 package Main.dao;
 
-import Main.model.Task;           // Add this
-import Main.util.DatabaseConnection;  // Add this
+import Main.model.Task;
+import Main.util.DatabaseConnection;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,7 +60,7 @@ public class TaskDAO
                         "LEFT JOIN study_session s ON t.task_id = s.task_id " +
                         "GROUP BY t.task_id";
 
-        try (Connection conn = DatabaseConnection.getConnection();  // unified name
+        try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(query);
              ResultSet rs = stmt.executeQuery())
         {
@@ -189,7 +189,7 @@ public class TaskDAO
 
     public List<Task> getTasksDueWithin24Hours()
     {
-        return getUpcomingDeadlines(1); // Special case for reminders
+        return getUpcomingDeadlines(1);
     }
 
 }
