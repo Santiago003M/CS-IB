@@ -1,6 +1,5 @@
 package Main.model;
 
-
 public class Task
 {
     private int taskId;

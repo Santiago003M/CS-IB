@@ -18,8 +18,6 @@ import java.sql.*;
 import java.util.List;
 import Main.dao.StudySessionDAO;
 
-
-
 public class MainDashboard extends JFrame
 {
     // Form-bound fields (must match MainDashboard.form exactly):
@@ -167,7 +165,6 @@ public class MainDashboard extends JFrame
     private void startTimer()
     {
         if (running) return;
-
         new SwingWorker<Integer, Void>()
         {
             @Override
@@ -195,7 +192,6 @@ public class MainDashboard extends JFrame
                 }
                 return -1;
             }
-
             @Override
             protected void done()
             {
@@ -505,9 +501,7 @@ public class MainDashboard extends JFrame
 
     public static void main(String[] args) { new MainDashboard(); }
 
-    /**
-     * Called when returning from TaskManager with a selected task
-     */
+
     public void setSelectedTask(int taskId, String taskName)
     {
         this.currentTaskId = taskId;

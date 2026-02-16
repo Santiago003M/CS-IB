@@ -23,7 +23,7 @@ public class InactivityMonitor
 
     public InactivityMonitor(int inactivityMinutes)
     {
-        this.inactivityLimitMs = inactivityMinutes * 60 * 1000;
+        this.inactivityLimitMs = inactivityMinutes * 10000;
         this.lastActivityTime = System.currentTimeMillis();
 
         this.checkTimer = new Timer(10000, e -> checkInactivity());

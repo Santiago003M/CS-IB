@@ -17,7 +17,8 @@ public class TaskService
 
     public List<Task> getAllTasks() throws ServiceException
     {
-        try {
+        try
+        {
             return taskDAO.getAllTasksWithTime();
         } catch (Exception e)
         {

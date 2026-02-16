@@ -5,7 +5,6 @@ import java.sql.SQLException;
 
 public class DatabaseConnection
 {
-
     private static final String URL = "jdbc:mysql://localhost:3306/COMPUTER_IA?useSSL=false&allowPublicKeyRetrieval=true";
     private static final String USER = "root";  // your MySQL username
     private static final String PASSWORD = "rootroot"; // your REAL MySQL password
