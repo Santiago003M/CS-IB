@@ -25,8 +25,12 @@ public class InactivityMonitor
     {
         this.inactivityLimitMs = inactivityMinutes * 10000;
         this.lastActivityTime = System.currentTimeMillis();
-
         this.checkTimer = new Timer(10000, e -> checkInactivity());
+
+        //for testing
+        //this.inactivityLimitMs = 5000;
+        //this.lastActivityTime = System.currentTimeMillis();
+        //this.checkTimer = new Timer(1000, e -> checkInactivity());
 
         Toolkit.getDefaultToolkit().addAWTEventListener(event -> {
             lastActivityTime = System.currentTimeMillis();
